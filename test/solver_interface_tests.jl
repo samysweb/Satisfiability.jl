@@ -95,6 +95,12 @@
         assign!(test_expr, values)
         @test value(test_expr) == (1. / 2.)
 
+        values = Dict("ar4_1"=>Rational{BigInt}(1//1), "ar4_2"=>Rational{BigInt}(2//1))
+        @satvariable(ar4[1:2], Real)
+        test_expr = RealExpr(:rdiv, ar4, nothing, "rattest")
+        assign!(test_expr, values)
+        @test value(test_expr) == (Rational{BigInt}(1 // 2))
+
         # Can't assign nonexistent operator
         #test_expr = RealExpr(:fakeop, Real(1,"a"), nothing, "test")
         #@test_logs (:error, "Unknown operator fakeop") assign!(test_expr, values)

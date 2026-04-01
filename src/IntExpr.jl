@@ -42,14 +42,14 @@ end
 mutable struct RealExpr <: NumericExpr
     op::Symbol
     children::Array{AbstractExpr}
-    value::Union{Float64,Nothing,Missing}
+    value::Union{Rational{BigInt},Nothing,Missing}
     name::String
     __is_commutative::Bool
 
     # for convenience
     RealExpr(op::Symbol,
         children::Array{T},
-        value::Union{Float64,Nothing,Missing},
+        value::Union{Nothing,Missing},
         name::String;
         __is_commutative=false) where {T<:AbstractExpr} = new(op, children, value, name, __is_commutative)
 end
@@ -76,11 +76,18 @@ end
 
 # These are necessary for defining interoperability between IntExpr, RealExpr, and built-in types such as Int, Bool, and Float.
 NumericInteroperableExpr = Union{NumericExpr,BoolExpr}
-NumericInteroperableConst = Union{Bool,Int,Float64}
+NumericInteroperableConst = Union{Bool,Int, Rational{BigInt}}
 
-__wrap_const(c::Float64) = RealExpr(:const, AbstractExpr[], c, c >= 0 ? "const_$c" : "const_neg_$(abs(c))")
+__rational_const_name(c::Rational{BigInt}) = replace(string(c),"//"=>"_d_")
+__wrap_const(c::Rational{BigInt}) = RealExpr(:const, AbstractExpr[], c, c >= 0 ? "const_$(__rational_const_name(c))" : "const_neg_$(__rational_const_name(c))")
+__wrap_const(c::Float64) = __wrap_const(rationalize(BigInt, c))
 __wrap_const(c::Int) = IntExpr(:const, AbstractExpr[], c, c >= 0 ? "const_$c" : "const_neg_$(abs(c))") # prevents names like -1 from being generated, which are disallowed in SMT-LIB
 __wrap_const(c::Bool) = BoolExpr(:const, AbstractExpr[], c, "const_$c")
+# Needed to correctly convert Bool and Int in real expressions
+__wrap_real_const(c::Float64) = __wrap_const(convert(Rational{BigInt}, c))
+__wrap_real_const(c::Int) = __wrap_const(convert(Rational{BigInt}, c))
+__wrap_real_const(c::Float64) = __wrap_const(c)
+__wrap_real_const(c::Rational{BigInt}) = __wrap_const(c)
 
 
 ##### COMPARISON OPERATIONS ####
@@ -288,7 +295,11 @@ Base.abs(e::BoolExpr) = ite(e, 1, 0)
 function __add_const!(es::Array{T}, literal::Real) where {T<:AbstractExpr}
     # bug: we can have 0 constants
     #if literal != 0
-    const_expr = isa(literal, Float64) ? RealExpr(:const, AbstractExpr[], literal, "const_$literal") : IntExpr(:const, AbstractExpr[], literal, "const_$literal")
+    if isa(literal, Rational{BigInt})
+        const_expr = RealExpr(:const, AbstractExpr[], literal, "const_$(__rational_const_name(literal))")
+    else
+        const_expr = IntExpr(:const, AbstractExpr[], literal, "const_$literal")
+    end
     push!(es, const_expr)
     #end
 end
@@ -462,8 +473,8 @@ println("typeof a/b: \$(typeof(a[1]/b[1]))")
 ```
 """
 Base.:/(e1::NumericInteroperableExpr, e2::NumericInteroperableExpr) = __numeric_n_ary_op([convert(RealExpr, e1), convert(RealExpr, e2)], :rdiv)
-Base.:/(e1::NumericInteroperableExpr, e2::NumericInteroperableConst) = __numeric_n_ary_op([convert(RealExpr, e1), __wrap_const(Float64(e2))], :rdiv)
-Base.:/(e1::NumericInteroperableConst, e2::NumericInteroperableExpr) = __numeric_n_ary_op([__wrap_const(Float64(e1)), convert(RealExpr, e2)], :rdiv)
+Base.:/(e1::NumericInteroperableExpr, e2::NumericInteroperableConst) = __numeric_n_ary_op([convert(RealExpr, e1), __wrap_real_const(e2)], :rdiv)
+Base.:/(e1::NumericInteroperableConst, e2::NumericInteroperableExpr) = __numeric_n_ary_op([__wrap_real_const(e1), convert(RealExpr, e2)], :rdiv)
 
 Base.inv(e::NumericInteroperableExpr) = 1.0 / e # this performs the correct promotion due to the float 1.0
 
@@ -472,9 +483,9 @@ Base.inv(e::NumericInteroperableExpr) = 1.0 / e # this performs the correct prom
 
 Performs manual conversion of an IntExpr to a RealExpr. Note that Satisfiability.jl automatically promotes types in arithmetic and comparison expressions, so this function is usually unnecessary to explicitly call.
 """
-to_real(a::IntExpr) = RealExpr(:to_real, [a], isnothing(a.value) ? nothing : Float64(a.value), __get_hash_name(:to_real, [a]))
+to_real(a::IntExpr) = RealExpr(:to_real, [a], isnothing(a.value) ? nothing : Rational{BigInt}(a.value), __get_hash_name(:to_real, [a]))
 to_real(a::RealExpr) = a # if we don't define this someone will call it and get a crash
-to_real(a::Union{Number,Nothing}) = isnothing(a) ? nothing : Float64(a) # this is needed for __propagate_value! to correctly propagate values
+to_real(a::Union{Number,Nothing}) = isnothing(a) ? nothing : rationalize(BigInt,a) # this is needed for __propagate_value! to correctly propagate values
 
 """
     to_int(a::RealExpr)
@@ -492,6 +503,6 @@ Base.promote_rule(::Type{RealExpr}, ::Type{BoolExpr}) = RealExpr
 Base.promote_rule(::Type{RealExpr}, ::Type{IntExpr}) = RealExpr
 
 Base.convert(::Type{IntExpr}, z::BoolExpr) = z.op == :const ? __wrap_const(Int64(z.value)) : ite(z, 1, 0)
-Base.convert(::Type{RealExpr}, z::BoolExpr) = z.op == :const ? __wrap_const(Float64(z.value)) : ite(z, 1.0, 0.0)
-Base.convert(::Type{RealExpr}, a::IntExpr) = a.op == :const ? __wrap_const(Float64(a.value)) : to_real(a)
+Base.convert(::Type{RealExpr}, z::BoolExpr) = z.op == :const ? __wrap_const(Rational{BigInt}(z.value)) : ite(z, 1.0, 0.0)
+Base.convert(::Type{RealExpr}, a::IntExpr) = a.op == :const ? __wrap_const(Rational{BigInt}(a.value)) : to_real(a)
 Base.convert(::Type{IntExpr}, a::RealExpr) = a.op == :const ? __wrap_const(Int64(a.value)) : to_int(a)

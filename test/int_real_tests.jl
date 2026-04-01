@@ -14,6 +14,7 @@
         @satvariable(z, Bool)
         @test isequal(convert(IntExpr, z), ite(z, 1, 0))
         @test isequal(convert(RealExpr, z), ite(z, 1.0, 0.0))
+        @test isequal(convert(RealExpr, z), ite(z, Rational{BigInt}(1//1), Rational{BigInt}(0//1)))
         @test isequal(z+z, ite(z, 1, 0) + ite(z, 1, 0))
 
         a.value = 2; b[1].value = 1
@@ -79,6 +80,10 @@
         children = [a, RealExpr(:const, AbstractExpr[], 3., "const_3.0")]
         @test isequal(sum([1.0, a, true, 1]), RealExpr(:add, children, nothing, Satisfiability.__get_hash_name(:add, children, is_commutative=true)))
 
+        # Type promotion to RealExpr works when we add a rational-valued literal
+        children = [a, RealExpr(:const, AbstractExpr[], Rational{BigInt}(3//1), "const_3_d_1")]
+        @test isequal(sum([Rational{BigInt}(3//1), a, true, 1]), RealExpr(:add, children, nothing, Satisfiability.__get_hash_name(:add, children, is_commutative=true)))
+
         # Type promotion to RealExpr works when we add a real-valued expr
         children = [to_real(a), to_real(b[1]), RealExpr(:const, AbstractExpr[], 2.0, "const_2.0")]
         @test isequal(sum([a, 1.0, 1, false, b[1]]), RealExpr(:add, children, nothing, Satisfiability.__get_hash_name(:add, children, is_commutative=true)))
@@ -110,7 +115,7 @@
         e2 = to_int(aR) + a <= 0 # this should be int
         assign!(e1, d)
         assign!(e2, d)
-        @test(isa(value(to_real(a)), Float64) && value(to_real(a)) == -1.0)
+        @test(isa(value(to_real(a)), Rational{BigInt}) && value(to_real(a)) == -1.0)
         @test(isa(value(to_int(aR)), Integer) && value(to_int(aR)) == 1)
 
         # Conversion to same type is an identity operation

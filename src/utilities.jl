@@ -195,9 +195,20 @@ function parse_type(type::AbstractString)
         # we shouldn't get here
         @error "Unknown SMT-LIB type \"type\""
     else # simple type like "Bool" or "Real"
-        types = Dict("Bool" => Bool, "Int" => Int, "Real" => Float64)
+        types = Dict("Bool" => Bool, "Int" => Int, "Real" => Rational{BigInt})
         return types[type]
     end
+end
+
+function decimal_string_to_rational(s::String)::Rational{BigInt}
+    parts = split(s, '.')
+    if length(parts) == 1
+        return Rational{BigInt}(parse(BigInt, parts[1]))
+    end
+    int_part, frac_part = parts
+    denom = BigInt(10)^length(frac_part)
+    numer = parse(BigInt, int_part) * denom + parse(BigInt, frac_part)
+    return numer // denom
 end
 
 # parse a string corresponding to an SMT-LIB value, and if it has no variables, return the numeric value
@@ -207,10 +218,15 @@ function parse_value(value::AbstractString; skip_symbols=true)
     elseif value == "false"
         return false
     end
-    # First check if it's a simple number, eg 1 or 2.3.
+    # First check if it's an integer number, eg 1
+    result = match(r"^[0-9]+$", value)
+    if !isnothing(result)
+        return parse(Int, value)
+    end
+    # Then check if it's a decimal number
     result = match(r"^[0-9\.]+$", value)
     if !isnothing(result)
-        return '.' in value ? parse(Float64, value) : parse(Int, value)
+        return decimal_string_to_rational(value)
     end
     # Now check if it's a hex or binary value (#x0f or #b01, for example)
     result = match(r"^\#(x|b)[0-9a-f]+$", value)
@@ -286,8 +302,8 @@ end
 
 # some functions we might encounter in solver output
 __smt_output_funcs = Dict(
-    :to_real => (a::Int) -> Float64(Int),
-    :to_int => (a::Float64) -> Integer(floor(a)),
+    :to_real => (a::Int) -> Rational{BigInt}(a),
+    :to_int => (a::Rational{BigInt}) -> Integer(floor(a)),
     :as => (a, type) -> type == :Int ? Integer(floor(a)) : eval(type)(a),
     :(=) => (a,b) -> a == b,
 )

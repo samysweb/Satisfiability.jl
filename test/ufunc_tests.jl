@@ -26,6 +26,7 @@
         @satvariable(s, Real)
         @test isa(r(s), RealExpr)
         @test isa(r(1.5), RealExpr)
+        @test isa(r(Rational{BigInt}(1//10)), RealExpr)
 
         # ufuncs cannot accept wrong types
         @test_throws MethodError s(z)

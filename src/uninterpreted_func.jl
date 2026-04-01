@@ -66,7 +66,7 @@ macro uninterpreted(f, InTypespec, OutTypespec)
             ConstType = Int
             wrapper = Satisfiability.__wrap_const
         elseif InTypespec == :Real
-            ConstType = Float64
+            ConstType = Rational{BigInt}
             wrapper = Satisfiability.__wrap_const
         elseif InTypespec == :Bool
             ConstType = Bool

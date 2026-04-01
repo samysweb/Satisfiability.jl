@@ -51,8 +51,10 @@ __smt_generated_ops = Dict(
 # Finally, we provide facilities for correct encoding of consts
 function __format_smt_const(exprtype::Type, c::AbstractExpr)
     # there's no such thing as a Bool const because all Bool consts are simplifiable
-    if exprtype <: IntExpr || exprtype <: RealExpr || exprtype <: BoolExpr
+    if exprtype <: IntExpr || exprtype <: BoolExpr
         return string(c.value) # automatically does the right thing for Ints and Reals
+    elseif exprtype <: RealExpr
+        return "(/ $(numerator(c.value)) $(denominator(c.value)) )"
     elseif exprtype <: AbstractBitVectorExpr
         if c.length % 4 == 0 # can be a hex string
             return "#x$(string(c.value, base=16, pad=div(c.length,4)))"
