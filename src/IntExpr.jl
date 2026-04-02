@@ -52,6 +52,13 @@ mutable struct RealExpr <: NumericExpr
         value::Union{Rational{BigInt},Nothing,Missing},
         name::String;
         __is_commutative=false) where {T<:AbstractExpr} = new(op, children, value, name, __is_commutative)
+    
+    # For Float compatibility
+    RealExpr(op::Symbol,
+        children::Array{T},
+        value::Float64,
+        name::String;
+        __is_commutative=false) where {T<:AbstractExpr} = RealExpr(op, children, rationalize(BigInt, value), name, __is_commutative)
 end
 
 """

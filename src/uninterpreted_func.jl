@@ -66,8 +66,8 @@ macro uninterpreted(f, InTypespec, OutTypespec)
             ConstType = Int
             wrapper = Satisfiability.__wrap_const
         elseif InTypespec == :Real
-            ConstType = Rational{BigInt}
-            wrapper = Satisfiability.__wrap_const
+            ConstType = Union{Rational{BigInt},Float64}
+            wrapper = Satisfiability.__wrap_real_const
         elseif InTypespec == :Bool
             ConstType = Bool
             wrapper = (b) -> BoolExpr(:const, AbstractExpr[], b, "const_$b")

@@ -200,7 +200,7 @@ function parse_type(type::AbstractString)
     end
 end
 
-function decimal_string_to_rational(s::String)::Rational{BigInt}
+function decimal_string_to_rational(s::AbstractString)::Rational{BigInt}
     parts = split(s, '.')
     if length(parts) == 1
         return Rational{BigInt}(parse(BigInt, parts[1]))
