@@ -77,22 +77,22 @@
         @test isequal(sum([a, 1, true]), IntExpr(:add, children, nothing, Satisfiability.__get_hash_name(:add, children, is_commutative=true)))
         
         # Type promotion to RealExpr works when we add a float-valued literal
-        children = [a, RealExpr(:const, AbstractExpr[], 3., "const_3.0")]
+        children = [a, RealExpr(:const, AbstractExpr[], 3., "const_3_d_1")]
         @test isequal(sum([1.0, a, true, 1]), RealExpr(:add, children, nothing, Satisfiability.__get_hash_name(:add, children, is_commutative=true)))
 
         # Type promotion to RealExpr works when we add a rational-valued literal
         children = [a, RealExpr(:const, AbstractExpr[], Rational{BigInt}(3//1), "const_3_d_1")]
-        @test isequal(sum([Rational{BigInt}(3//1), a, true, 1]), RealExpr(:add, children, nothing, Satisfiability.__get_hash_name(:add, children, is_commutative=true)))
+        @test isequal(sum([Rational{BigInt}(1//1), a, true, 1]), RealExpr(:add, children, nothing, Satisfiability.__get_hash_name(:add, children, is_commutative=true)))
 
         # Type promotion to RealExpr works when we add a real-valued expr
-        children = [to_real(a), to_real(b[1]), RealExpr(:const, AbstractExpr[], 2.0, "const_2.0")]
+        children = [to_real(a), to_real(b[1]), RealExpr(:const, AbstractExpr[], 2.0, "const_2_d_1")]
         @test isequal(sum([a, 1.0, 1, false, b[1]]), RealExpr(:add, children, nothing, Satisfiability.__get_hash_name(:add, children, is_commutative=true)))
 
         # Sum works automatically
         @test isequal(1 + div(a, b[1]) + mod(b[1], b[2]) + true, sum([1, div(a, b[1]), mod(b[1], b[2]), true]))
 
         @test all(isequal.((a - 3).children, [a, IntExpr(:const, AbstractExpr[], 3, "const_3")]))
-        @test all(isequal.((ar/3.0).children, [ar, RealExpr(:const, AbstractExpr[], 3., "const_3.0")]))
+        @test all(isequal.((ar/3.0).children, [ar, RealExpr(:const, AbstractExpr[], 3., "const_3_d_1")]))
 
         # div, /, mod type coercion
         @test isequal(div(2.0, ar), div(2, to_int(ar)))
