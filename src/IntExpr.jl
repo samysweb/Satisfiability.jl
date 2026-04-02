@@ -49,7 +49,7 @@ mutable struct RealExpr <: NumericExpr
     # for convenience
     RealExpr(op::Symbol,
         children::Array{T},
-        value::Union{Nothing,Missing},
+        value::Union{Rational{BigInt},Nothing,Missing},
         name::String;
         __is_commutative=false) where {T<:AbstractExpr} = new(op, children, value, name, __is_commutative)
 end
@@ -73,10 +73,20 @@ function RealExpr(name::String)::RealExpr
     return RealExpr(:identity, AbstractExpr[], nothing, "$(name)")
 end
 
+# This helper type ensures that we can operate the Satisfiability.jl interface with Rational{BigInt} and Float64
+# while ensuring that conversions between Floats and Rationals is impossible beyond this very package.
+struct RationalWrapper
+    value :: Rational{BigInt}
+end
+
+convert(::Type{RationalWrapper}, x::Rational{BigInt}) = RationalWrapper(x)
+convert(::Type{Rational{BigInt}}, x::RationalWrapper) = x.value
+convert(::Type{Rational{BigInt}}, x::Float64) = RationalWrapper(rationalize(BigInt, x))
+
 
 # These are necessary for defining interoperability between IntExpr, RealExpr, and built-in types such as Int, Bool, and Float.
 NumericInteroperableExpr = Union{NumericExpr,BoolExpr}
-NumericInteroperableConst = Union{Bool,Int, Rational{BigInt}}
+NumericInteroperableConst = Union{Bool,Int, RationalWrapper}
 
 __rational_const_name(c::Rational{BigInt}) = replace(string(c),"//"=>"_d_")
 __wrap_const(c::Rational{BigInt}) = RealExpr(:const, AbstractExpr[], c, c >= 0 ? "const_$(__rational_const_name(c))" : "const_neg_$(__rational_const_name(c))")
