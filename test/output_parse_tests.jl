@@ -7,7 +7,7 @@
         evaluate_values = Satisfiability.evaluate_values
         split_arguments = Satisfiability.split_arguments
         # const values
-        @test evaluate_values(parse_value("2.0013")[1]) == 2.0013
+        @test evaluate_values(parse_value("2.0013")[1]) == rationalize(BigInt,2.0013)
         @test evaluate_values(parse_value("0")[1]) == 0
         @test evaluate_values(parse_value("#x00ff")[1]) == 255
         @test evaluate_values(parse_value("#b1111")[1]) == 15

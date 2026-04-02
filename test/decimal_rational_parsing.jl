@@ -9,7 +9,7 @@ using Satisfiability
         @test Satisfiability.decimal_string_to_rational("1")   == 1//1
         @test Satisfiability.decimal_string_to_rational("42")  == 42//1
         @test Satisfiability.decimal_string_to_rational("9999999999999999999999999999") ==
-            Rational{BigInt}(BigInt("9999999999999999999999999999"))
+            rationalize(BigInt, parse(BigInt, "9999999999999999999999999999"))
     end
 
     @testset "simple decimals" begin
