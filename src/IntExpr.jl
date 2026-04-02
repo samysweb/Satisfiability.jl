@@ -93,7 +93,6 @@ __wrap_const(c::Bool) = BoolExpr(:const, AbstractExpr[], c, "const_$c")
 # Needed to correctly convert Bool and Int in real expressions
 __wrap_real_const(c::Float64) = __wrap_const(convert(Rational{BigInt}, c))
 __wrap_real_const(c::Int) = __wrap_const(convert(Rational{BigInt}, c))
-__wrap_real_const(c::Float64) = __wrap_const(c)
 __wrap_real_const(c::Rational{BigInt}) = __wrap_const(c)
 
 
