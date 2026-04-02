@@ -73,20 +73,10 @@ function RealExpr(name::String)::RealExpr
     return RealExpr(:identity, AbstractExpr[], nothing, "$(name)")
 end
 
-# This helper type ensures that we can operate the Satisfiability.jl interface with Rational{BigInt} and Float64
-# while ensuring that conversions between Floats and Rationals is impossible beyond this very package.
-struct RationalWrapper
-    value :: Rational{BigInt}
-end
-
-convert(::Type{RationalWrapper}, x::Rational{BigInt}) = RationalWrapper(x)
-convert(::Type{Rational{BigInt}}, x::RationalWrapper) = x.value
-convert(::Type{Rational{BigInt}}, x::Float64) = RationalWrapper(rationalize(BigInt, x))
-
 
 # These are necessary for defining interoperability between IntExpr, RealExpr, and built-in types such as Int, Bool, and Float.
 NumericInteroperableExpr = Union{NumericExpr,BoolExpr}
-NumericInteroperableConst = Union{Bool,Int, RationalWrapper}
+NumericInteroperableConst = Union{Bool,Int, Rational{BigInt}}
 
 __rational_const_name(c::Rational{BigInt}) = replace(string(c),"//"=>"_d_")
 __wrap_const(c::Rational{BigInt}) = RealExpr(:const, AbstractExpr[], c, c >= 0 ? "const_$(__rational_const_name(c))" : "const_neg_$(__rational_const_name(c))")
@@ -505,6 +495,18 @@ Performs manual conversion of a RealExpr to an IntExpr. Equivalent to Julia `Int
 to_int(a::RealExpr) = IntExpr(:to_int, [a], isnothing(a.value) ? nothing : Int(floor(a.value)), __get_hash_name(:to_int, [a]))
 to_int(a::IntExpr) = a
 to_int(a::Union{Number,Nothing}) = isnothing(a) ? nothing : Int(floor(a)) # this is needed for __propagate_value! to correctly propagate values
+
+##### FLOAT SUPPORT #####
+# This allows us to also use floats (which are then automatically converted into rationals)
+for op in [:>, :>=, :<, :<=, :(==), :+, :-, :*, :/, :div, :mod]
+    @eval Base.$op(x::NumericInteroperableExpr, y::Float64) = 
+        $op(x, rationalize(BigInt, y))
+    @eval Base.$op(x::Float64, y::NumericInteroperableExpr) = 
+        $op(rationalize(BigInt, x), y)
+end
+distinct(x::NumericInteroperableExpr, y::Float64) = distinct(x, rationalize(BigInt, y))
+distinct(x::Float64, y::NumericInteroperableExpr) = distinct(rationalize(BigInt, x), y)
+distinct(x::Float64, y::Float64) = x != y
 
 ##### PROMOTION RULES #####
 # These govern the promotion of BoolExpr, IntExpr and RealExpr types.
